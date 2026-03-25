@@ -38,7 +38,7 @@
 ## 目录结构
 
 ```text
-rag-knowledge-api/
+langchain_RAG_langsmith_fastapi/
 ├── app/
 │   ├── config.py
 │   ├── loaders.py
@@ -105,7 +105,7 @@ LangSmith 主要用来看链路、调试和评估。你可以看到：
 ### 1. 进入目录
 
 ```bash
-cd /Users/chenzhizs/Documents/GitHub/fastapi/rag-knowledge-api
+cd langchain_RAG_langsmith_fastapi
 ```
 
 ### 2. 创建虚拟环境
