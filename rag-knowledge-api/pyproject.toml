@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-knowledge-api"
+version = "0.1.0"
+description = "A production-style starter project for a RAG knowledge API with LangChain, LangSmith, FastAPI, and Chroma."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "python-multipart",
+  "python-dotenv",
+  "langchain",
+  "langchain-openai",
+  "langchain-chroma",
+  "langchain-community",
+  "langchain-text-splitters",
+  "langsmith",
+  "pypdf",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
