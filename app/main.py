@@ -53,6 +53,7 @@ def read_root() -> dict[str, object]:
     return {
         "project": "RAG Knowledge API",
         "message": "先看 README，再去 /docs 直接调接口。",
+        "runtime_mode": settings.runtime_mode,
         "openapi_docs": "/docs",
         "health": "/health",
         "openai_configured": bool(settings.openai_api_key),
@@ -65,6 +66,7 @@ def health() -> HealthResponse:
     settings = get_cached_settings()
     return HealthResponse(
         status="ok",
+        runtime_mode=settings.runtime_mode,
         openai_configured=bool(settings.openai_api_key),
         langsmith_tracing=settings.langsmith_tracing,
         langsmith_project=settings.langsmith_project,
@@ -77,7 +79,11 @@ def stats() -> StatsResponse:
     service = get_service()
     return StatsResponse(
         collection_name=settings.chroma_collection_name,
-        persist_directory=str(settings.chroma_persist_directory),
+        persist_directory=(
+            "in-memory (test mode)"
+            if settings.is_test_mode
+            else str(settings.chroma_persist_directory)
+        ),
         chunk_count=service.collection_count(),
         default_top_k=settings.top_k,
     )

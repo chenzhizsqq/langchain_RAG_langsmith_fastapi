@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class HealthResponse(BaseModel):
     status: str
+    runtime_mode: str
     openai_configured: bool
     langsmith_tracing: bool
     langsmith_project: str | None = None

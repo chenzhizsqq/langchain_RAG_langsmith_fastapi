@@ -33,6 +33,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 @dataclass(frozen=True)
 class Settings:
     base_dir: Path
+    runtime_mode: str
     openai_api_key: str | None
     chat_model: str
     embedding_model: str
@@ -43,6 +44,7 @@ class Settings:
     top_k: int
     chunk_size: int
     chunk_overlap: int
+    mock_embedding_dimensions: int
     langsmith_tracing: bool
     langsmith_project: str | None
     seed_docs_directory: Path
@@ -52,8 +54,15 @@ class Settings:
         self.chroma_persist_directory.mkdir(parents=True, exist_ok=True)
         self.upload_directory.mkdir(parents=True, exist_ok=True)
 
+    @property
+    def is_test_mode(self) -> bool:
+        return self.runtime_mode == "test"
+
     def validate_runtime(self) -> None:
-        if not self.openai_api_key:
+        if self.runtime_mode not in {"production", "test"}:
+            raise RuntimeError("APP_MODE 只支持 production 或 test。")
+
+        if not self.is_test_mode and not self.openai_api_key:
             raise RuntimeError(
                 "缺少 OPENAI_API_KEY。请先把 .env.example 复制成 .env，并填入你的 OpenAI API Key。"
             )
@@ -62,6 +71,7 @@ class Settings:
 def get_settings() -> Settings:
     settings = Settings(
         base_dir=BASE_DIR,
+        runtime_mode=os.getenv("APP_MODE", "test").strip().lower(),
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         chat_model=os.getenv("OPENAI_CHAT_MODEL", "gpt-4.1-mini"),
         embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
@@ -74,10 +84,12 @@ def get_settings() -> Settings:
         top_k=_env_int("RAG_TOP_K", 4),
         chunk_size=_env_int("RAG_CHUNK_SIZE", 700),
         chunk_overlap=_env_int("RAG_CHUNK_OVERLAP", 120),
+        mock_embedding_dimensions=_env_int("MOCK_EMBEDDING_DIMENSIONS", 64),
         langsmith_tracing=_env_flag("LANGSMITH_TRACING", False),
         langsmith_project=os.getenv("LANGSMITH_PROJECT"),
         seed_docs_directory=_resolve_path("data/seed_docs"),
         upload_directory=_resolve_path("storage/uploads"),
     )
     settings.ensure_directories()
+    settings.validate_runtime()
     return settings

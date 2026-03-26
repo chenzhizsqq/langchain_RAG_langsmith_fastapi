@@ -12,7 +12,7 @@
 
 - 用 `FastAPI` 暴露接口
 - 用 `LangChain` 组织 RAG 流程
-- 用 `OpenAI Embeddings` 把文本转成向量
+- 在生产模式用 `OpenAI Embeddings` 把文本转成向量
 - 用 `Chroma` 做本地 Vector DB
 - 用 `LangSmith` 看调用链路和调试过程
 
@@ -127,9 +127,12 @@ pip install -e .
 cp .env.example .env
 ```
 
-你至少要填：
+默认的 `.env.example` 已经是 `APP_MODE=test`，所以你现在只是测试整个架构的话，不需要真实 OpenAI Key。
 
-- `OPENAI_API_KEY`
+如果你要切到生产模式，再把这些项补上：
+
+- `APP_MODE=production`
+- `OPENAI_API_KEY=你的真实 key`
 
 如果你还想看 LangSmith 链路，再填：
 
@@ -139,7 +142,7 @@ cp .env.example .env
 ### 5. 启动服务
 
 ```bash
-python -m app.main
+.venv/bin/python -m app.main
 ```
 
 如果你想要开发时自动重载，可以改用：
@@ -160,6 +163,8 @@ python -m uvicorn app.main:app --reload
 ```bash
 curl -X POST http://127.0.0.1:8000/api/ingest/sample
 ```
+
+在 `APP_MODE=test` 下，这一步会使用本地 mock embedding 和内存向量库，把文档正常写入检索层，用来验证你的整体架构是否跑通。
 
 ### 第二步：提问
 
@@ -212,6 +217,11 @@ curl -X POST http://127.0.0.1:8000/api/ingest/file \
 - `Chroma`
 - `ChatOpenAI`
 - prompt 组织
+
+补充：
+
+- 在 `APP_MODE=test` 下，项目会自动切到本地 mock embedding、本地内存向量库和本地 mock answer，用来做无 key 的架构联调。
+- 在 `APP_MODE=production` 下，项目才会切回 `OpenAIEmbeddings + ChatOpenAI + Chroma`。
 
 ### RAG
 

@@ -7,11 +7,13 @@ from typing import Any
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langsmith import traceable
 
 from app.config import Settings
+from app.mock_runtime import LocalHashEmbeddings, build_mock_answer
 
 
 class RAGService:
@@ -19,13 +21,18 @@ class RAGService:
         self.settings = settings
         self.settings.validate_runtime()
 
-        self.embeddings = OpenAIEmbeddings(model=settings.embedding_model)
-        self.vector_store = Chroma(
-            collection_name=settings.chroma_collection_name,
-            embedding_function=self.embeddings,
-            persist_directory=str(settings.chroma_persist_directory),
-        )
-        self.llm = ChatOpenAI(model=settings.chat_model, temperature=0)
+        if settings.is_test_mode:
+            self.embeddings = LocalHashEmbeddings(dimensions=settings.mock_embedding_dimensions)
+            self.llm = None
+            self.vector_store = InMemoryVectorStore(self.embeddings)
+        else:
+            self.embeddings = OpenAIEmbeddings(model=settings.embedding_model)
+            self.llm = ChatOpenAI(model=settings.chat_model, temperature=0)
+            self.vector_store = Chroma(
+                collection_name=settings.chroma_collection_name,
+                embedding_function=self.embeddings,
+                persist_directory=str(settings.chroma_persist_directory),
+            )
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=settings.chunk_size,
             chunk_overlap=settings.chunk_overlap,
@@ -50,6 +57,8 @@ class RAGService:
         )
 
     def collection_count(self) -> int:
+        if self.settings.is_test_mode:
+            return len(self.vector_store.store)
         return self.vector_store._collection.count()
 
     def _chunk_documents(self, documents: list[Document]) -> list[Document]:
@@ -167,9 +176,12 @@ class RAGService:
             }
 
         context = self._format_context(matches)
-        prompt_value = self.prompt.invoke({"question": question, "context": context})
-        response = self.llm.invoke(prompt_value)
-        answer = self._extract_text(response)
+        if self.settings.is_test_mode:
+            answer = build_mock_answer(question, matches)
+        else:
+            prompt_value = self.prompt.invoke({"question": question, "context": context})
+            response = self.llm.invoke(prompt_value)
+            answer = self._extract_text(response)
 
         sources = [
             {
