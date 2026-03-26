@@ -32,6 +32,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 @dataclass(frozen=True)
 class Settings:
+    # runtime_mode 决定当前是“真实模型联调”还是“本地测试联调”。
     base_dir: Path
     runtime_mode: str
     openai_api_key: str | None
@@ -51,6 +52,7 @@ class Settings:
     upload_directory: Path
 
     def ensure_directories(self) -> None:
+        # 生产模式会用到本地 Chroma 持久化目录，上传接口也需要保存原始文件。
         self.chroma_persist_directory.mkdir(parents=True, exist_ok=True)
         self.upload_directory.mkdir(parents=True, exist_ok=True)
 
@@ -62,6 +64,7 @@ class Settings:
         if self.runtime_mode not in {"production", "test"}:
             raise RuntimeError("APP_MODE 只支持 production 或 test。")
 
+        # test 模式不要求真实 OpenAI key，便于先验证 API 和 RAG 架构链路。
         if not self.is_test_mode and not self.openai_api_key:
             raise RuntimeError(
                 "缺少 OPENAI_API_KEY。请先把 .env.example 复制成 .env，并填入你的 OpenAI API Key。"
@@ -69,6 +72,7 @@ class Settings:
 
 
 def get_settings() -> Settings:
+    # 所有运行参数统一从这里收口，后面接口层和 RAG 层都只依赖 Settings。
     settings = Settings(
         base_dir=BASE_DIR,
         runtime_mode=os.getenv("APP_MODE", "test").strip().lower(),

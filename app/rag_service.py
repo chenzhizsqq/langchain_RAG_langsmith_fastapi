@@ -22,10 +22,13 @@ class RAGService:
         self.settings.validate_runtime()
 
         if settings.is_test_mode:
+            # 测试模式目标是“先验证架构能不能跑”，所以完全走本地实现：
+            # mock embedding + 内存向量库 + mock answer。
             self.embeddings = LocalHashEmbeddings(dimensions=settings.mock_embedding_dimensions)
             self.llm = None
             self.vector_store = InMemoryVectorStore(self.embeddings)
         else:
+            # 生产模式才接真实 OpenAI 和 Chroma。
             self.embeddings = OpenAIEmbeddings(model=settings.embedding_model)
             self.llm = ChatOpenAI(model=settings.chat_model, temperature=0)
             self.vector_store = Chroma(
@@ -43,6 +46,8 @@ class RAGService:
                 (
                     "system",
                     (
+                        # 这个 prompt 的职责很单一：限制模型优先依据检索上下文回答，
+                        # 避免把普通聊天风格带进知识库问答。
                         "你是一个面向初学者的 RAG 教学助手。"
                         "请优先基于给定 context 回答。"
                         "如果 context 不足，就明确说当前知识库信息不足，并指出还缺什么资料。"
@@ -62,6 +67,8 @@ class RAGService:
         return self.vector_store._collection.count()
 
     def _chunk_documents(self, documents: list[Document]) -> list[Document]:
+        # 进入向量库之前先切块，并为每个来源补一个 chunk_index，
+        # 这样后面返回 sources 时能告诉你命中了原文的哪一段。
         split_documents = self.text_splitter.split_documents(documents)
         chunk_counters: dict[str, int] = defaultdict(int)
         normalized: list[Document] = []
@@ -82,12 +89,14 @@ class RAGService:
             source = str(document.metadata.get("source", "unknown"))
             page = str(document.metadata.get("page", "na"))
             chunk_index = str(document.metadata.get("chunk_index", "na"))
+            # 用内容相关的稳定 ID，避免同一份文档重复导入时完全失控。
             payload = f"{source}|{page}|{chunk_index}|{document.page_content}"
             ids.append(sha1(payload.encode("utf-8")).hexdigest())
         return ids
 
     @traceable(name="ingest_documents")
     def ingest_documents(self, documents: list[Document]) -> dict[str, Any]:
+        # ingest 是 RAG 的“索引阶段”入口：切块 -> 向量化 -> 写入向量库。
         chunks = self._chunk_documents(documents)
         if not chunks:
             return {
@@ -111,6 +120,7 @@ class RAGService:
         }
 
     def _format_context(self, matches: list[tuple[Document, float]]) -> str:
+        # 把检索结果展开成可读 context，便于模型回答，也便于后续接 LangSmith 观察。
         blocks: list[str] = []
         for index, (document, distance) in enumerate(matches, start=1):
             source = str(document.metadata.get("source", "unknown"))
@@ -166,6 +176,7 @@ class RAGService:
             }
 
         resolved_top_k = top_k or self.settings.top_k
+        # ask 是 RAG 的“检索 + 生成阶段”入口。
         matches = self.vector_store.similarity_search_with_score(question, k=resolved_top_k)
 
         if not matches:
@@ -179,6 +190,7 @@ class RAGService:
         if self.settings.is_test_mode:
             answer = build_mock_answer(question, matches)
         else:
+            # 生产模式下，真正把“问题 + 检索上下文”交给 LLM。
             prompt_value = self.prompt.invoke({"question": question, "context": context})
             response = self.llm.invoke(prompt_value)
             answer = self._extract_text(response)

@@ -32,6 +32,7 @@ app = FastAPI(
 
 @lru_cache
 def get_cached_settings() -> Settings:
+    # 配置和服务都做缓存，保证整个进程里复用同一份运行状态。
     return get_settings()
 
 
@@ -44,6 +45,7 @@ def get_service() -> RAGService:
     try:
         return get_cached_service()
     except RuntimeError as exc:
+        # 配置错误直接转成 HTTP 500，前端或 Swagger 可以马上看到原因。
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -80,6 +82,7 @@ def stats() -> StatsResponse:
     return StatsResponse(
         collection_name=settings.chroma_collection_name,
         persist_directory=(
+            # 测试模式没有落磁盘，所以这里明确标注成 in-memory。
             "in-memory (test mode)"
             if settings.is_test_mode
             else str(settings.chroma_persist_directory)
@@ -93,6 +96,7 @@ def stats() -> StatsResponse:
 def ingest_sample_documents() -> IngestResponse:
     settings = get_cached_settings()
     service = get_service()
+    # 这个接口专门用来验证最小 demo 是否能跑通，不依赖用户先准备资料。
     documents = load_seed_documents(settings.seed_docs_directory)
     result = service.ingest_documents(documents)
     return IngestResponse(**result)
@@ -125,6 +129,7 @@ async def ingest_file(file: UploadFile = File(...)) -> IngestResponse:
 @app.post("/api/ask", response_model=AskResponse)
 def ask_question(request: AskRequest) -> AskResponse:
     service = get_service()
+    # 问答接口本身不做业务逻辑，统一下沉到 RAGService，保持 API 层足够薄。
     result = service.answer_question(request.question, request.top_k)
     return AskResponse(**result)
 
