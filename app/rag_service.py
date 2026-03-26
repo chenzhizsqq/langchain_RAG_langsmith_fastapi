@@ -1,5 +1,41 @@
 from __future__ import annotations
 
+"""
+RAGService 是这个项目最核心的业务层。
+
+可以先把整个流程分成两段理解：
+
+1. ingest_documents
+   作用：把原始资料变成“可检索”的知识库
+   流程：
+   - 读取到的 Document 先做切块
+   - 给每个 chunk 补充 metadata，例如 source 和 chunk_index
+   - 为每个 chunk 生成稳定 ID
+   - 把 chunk 写入向量库
+
+2. answer_question
+   作用：收到问题后，先检索，再回答
+   流程：
+   - 用问题去向量库做相似度检索
+   - 把检索命中的 chunk 拼成 context
+   - production 模式：交给真实 LLM 生成答案
+   - test 模式：直接用本地 mock answer 返回，便于验证架构
+
+这个文件里最重要的设计点有三个：
+
+1. 把“接口层”和“RAG 业务层”分开
+   FastAPI 只负责收发请求，真正的 RAG 流程都集中在这里，
+   这样后面无论你接网页、CLI 还是别的服务，都能复用这一层。
+
+2. 把“测试模式”和“生产模式”统一在同一个服务抽象下
+   test 模式用于验证架构是否跑通，不依赖真实 OpenAI key；
+   production 模式才接真实模型和持久化向量库。
+
+3. 把“检索结果”显式返回给调用方
+   这对开发非常重要，因为调 RAG 时，很多问题不是模型回答错，
+   而是检索阶段就已经拿错了资料。
+"""
+
 from collections import defaultdict
 from hashlib import sha1
 from typing import Any
