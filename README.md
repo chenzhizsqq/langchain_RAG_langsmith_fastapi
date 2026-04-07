@@ -1,5 +1,44 @@
 # RAG Knowledge API
 
+## 先看这张图
+
+如果你是用 Spring Boot 思维来理解这个项目，先记这一版就够了：
+
+```text
+客户端（iOS / Web）
+        |
+        v
+app/main.py
+FastAPI 接口入口层
+≈ Spring Boot 的 Controller
+        |
+        v
+app/rag_service.py
+RAG 业务处理层
+≈ Spring Boot 的 Service
+        |
+        v
+向量检索 / 模型调用
+test 模式：本地 mock embedding + 内存向量库 + mock answer
+production 模式：OpenAI Embeddings + ChatOpenAI + Chroma
+≈ Spring Boot 的 Repository/外部服务/数据库
+        |
+        v
+app/schemas.py
+请求与响应的数据结构定义
+≈ Spring Boot 的 DTO / Request / Response class
+```
+
+你以后如果一段时间没回来，先只回忆这三层：
+
+- [app/main.py](./app/main.py)：接口入口层
+- [app/rag_service.py](./app/rag_service.py)：业务核心层
+- [app/schemas.py](./app/schemas.py)：数据结构层
+
+最短调用链是：
+
+`客户端请求 -> main.py -> rag_service.py -> main.py -> schemas.py -> JSON 响应`
+
 这是一个重新从零搭好的入门项目，主题就是你要的这五块：
 
 - LangChain

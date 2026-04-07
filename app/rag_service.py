@@ -34,6 +34,30 @@ RAGService 是这个项目最核心的业务层。
 3. 把“检索结果”显式返回给调用方
    这对开发非常重要，因为调 RAG 时，很多问题不是模型回答错，
    而是检索阶段就已经拿错了资料。
+
+再补一个最关键的分层关系：
+
+1. app/main.py 怎么对接到这里
+   - main.py 里的每个接口先接住 HTTP 请求
+   - 然后调用 get_service() 取得 RAGService
+   - 再转调这里的方法，例如：
+     - /api/ingest/sample -> ingest_documents()
+     - /api/ingest/text   -> ingest_documents()
+     - /api/ask           -> answer_question()
+
+2. app/schemas.py 怎么和这里配合
+   - schemas.py 负责定义接口输入输出长什么样
+   - main.py 负责把请求解析成 schemas 里的 Request Model
+   - 这里负责产出业务结果
+   - 最后 main.py 再把这里返回的 dict 包装成 schemas 里的 Response Model
+
+也就是说，三层关系可以先记成：
+- main.py：接口入口层
+- schemas.py：数据结构层
+- rag_service.py：业务处理层
+
+最简调用链是：
+客户端请求 -> main.py -> rag_service.py -> main.py -> schemas.py -> JSON 响应
 """
 
 from collections import defaultdict
@@ -133,6 +157,8 @@ class RAGService:
     @traceable(name="ingest_documents")
     def ingest_documents(self, documents: list[Document]) -> dict[str, Any]:
         # ingest 是 RAG 的“索引阶段”入口：切块 -> 向量化 -> 写入向量库。
+        # 这个方法不会直接接 HTTP 请求，它是被 main.py 的接口函数调用的。
+        # main.py 先把外部输入整理成 Document，再交给这里处理。
         chunks = self._chunk_documents(documents)
         if not chunks:
             return {
@@ -147,6 +173,8 @@ class RAGService:
         self.vector_store.add_documents(documents=chunks, ids=ids)
 
         sources = sorted({str(document.metadata.get("source", "unknown")) for document in chunks})
+        # 这里先返回一个普通 dict。
+        # 之后 main.py 会把这个 dict 转成 schemas.py 里的 IngestResponse。
         return {
             "message": "文档导入完成。",
             "documents_count": len(documents),
@@ -204,6 +232,8 @@ class RAGService:
 
     @traceable(name="answer_question")
     def answer_question(self, question: str, top_k: int | None = None) -> dict[str, Any]:
+        # 这个方法对应 main.py 里的 /api/ask 接口。
+        # main.py 先用 AskRequest 接住客户端 JSON，再把 question / top_k 传进来。
         if self.collection_count() == 0:
             return {
                 "question": question,
@@ -242,4 +272,6 @@ class RAGService:
             for document, distance in matches
         ]
 
+        # 这里同样先返回普通 dict，
+        # 然后 main.py 再包装成 schemas.py 里的 AskResponse 返回给客户端。
         return {"question": question, "answer": answer, "sources": sources}
