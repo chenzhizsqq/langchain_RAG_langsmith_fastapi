@@ -48,6 +48,14 @@ from app.loaders import (
 )
 from app.rag_service import RAGService
 from app.schemas import (
+    # 这里导入的不是业务逻辑，而是“接口的数据结构定义”。
+    # main.py 会把这些 schema 挂到各个接口上，用来说明：
+    # - 请求体应该长什么样
+    # - 响应体应该长什么样
+    #
+    # 用 Spring Boot 思维看，很像在 Controller 里使用：
+    # - Request DTO
+    # - Response DTO
     AskRequest,
     AskResponse,
     HealthResponse,
@@ -87,6 +95,8 @@ def get_service() -> RAGService:
 def read_root() -> dict[str, object]:
     # 这是最基础的 GET 接口示例。
     # GET 通常用来读取状态或说明信息，不负责提交业务数据。
+    # 这个接口没有单独使用 schemas.py 里的 Response Model，
+    # 而是直接返回一个普通 dict，FastAPI 最后仍会把它转成 JSON。
     settings = get_cached_settings()
     return {
         "project": "RAG Knowledge API",
@@ -103,6 +113,9 @@ def read_root() -> dict[str, object]:
 def health() -> HealthResponse:
     # 这里的 "/health" 就是 path，也就是接口路径。
     # response_model=HealthResponse 表示：这个接口返回的 JSON 要符合 HealthResponse 的结构。
+    # 所以这里对应的 schema 是：
+    # - Request：无
+    # - Response：HealthResponse
     settings = get_cached_settings()
     return HealthResponse(
         status="ok",
@@ -116,6 +129,9 @@ def health() -> HealthResponse:
 @app.get("/api/stats", response_model=StatsResponse)
 def stats() -> StatsResponse:
     # 这也是 GET，因为它只是读取当前知识库状态，不提交新数据。
+    # 所以这里对应的 schema 是：
+    # - Request：无
+    # - Response：StatsResponse
     settings = get_cached_settings()
     service = get_service()
     return StatsResponse(
@@ -135,6 +151,11 @@ def stats() -> StatsResponse:
 def ingest_sample_documents() -> IngestResponse:
     # 这是 POST 接口示例。
     # POST 常用来触发“创建、导入、执行”这类动作。
+    # 这个接口不需要客户端传 JSON body，
+    # 但它仍然会返回一个固定结构的 Response Model。
+    # 所以这里对应的 schema 是：
+    # - Request：无
+    # - Response：IngestResponse
     settings = get_cached_settings()
     service = get_service()
     # 这个接口专门用来验证最小 demo 是否能跑通，不依赖用户先准备资料。
@@ -147,6 +168,9 @@ def ingest_sample_documents() -> IngestResponse:
 def ingest_text(request: TextIngestRequest) -> IngestResponse:
     # request: TextIngestRequest 表示这个 POST 接口会接收一个 JSON body。
     # 也就是说，客户端要传入 title / text / source 这样的 JSON 字段。
+    # 所以这里对应的 schema 是：
+    # - Request：TextIngestRequest
+    # - Response：IngestResponse
     service = get_service()
     documents = build_text_document(request.title, request.text, request.source)
     result = service.ingest_documents(documents)
@@ -157,6 +181,9 @@ def ingest_text(request: TextIngestRequest) -> IngestResponse:
 async def ingest_file(file: UploadFile = File(...)) -> IngestResponse:
     # 这个 POST 不是接 JSON，而是接文件上传。
     # 对 iOS 来说，这类接口通常对应 multipart/form-data 请求。
+    # 所以这里对应的 schema 是：
+    # - Request：不是 schemas.py 的 BaseModel，而是 UploadFile
+    # - Response：IngestResponse
     settings = get_cached_settings()
     service = get_service()
 
@@ -175,6 +202,9 @@ async def ingest_file(file: UploadFile = File(...)) -> IngestResponse:
 def ask_question(request: AskRequest) -> AskResponse:
     # 这是最典型的“客户端发 JSON，请求后端处理，再返回 JSON”的接口。
     # iOS 以后最常对接的，通常就是这种形式。
+    # 所以这里对应的 schema 是：
+    # - Request：AskRequest
+    # - Response：AskResponse
     service = get_service()
     # 问答接口本身不做业务逻辑，统一下沉到 RAGService，保持 API 层足够薄。
     result = service.answer_question(request.question, request.top_k)
