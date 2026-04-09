@@ -10,7 +10,76 @@
 
 ---
 
-## 1. import 语法
+## 1. 模块顶部三引号字符串
+
+### Python
+
+```python
+"""
+这里写文件说明
+这里写学习备注
+"""
+```
+
+### 最白解释
+
+这通常叫模块级 docstring。
+
+在这个项目里，它主要用来：
+
+- 给这个文件写总说明
+- 写学习备注
+- 帮你以后回来快速回忆这个文件是干什么的
+
+### Java 感觉
+
+没有完全一模一样的写法。
+
+感觉上有点像：
+
+- 写在 class 上方的一大段注释
+- 或者这个文件的说明文档
+
+如果硬类比，可以理解成：
+
+```java
+/**
+ * 文件说明
+ * 学习备注
+ */
+```
+
+---
+
+## 2. from __future__ import annotations
+
+### Python
+
+```python
+from __future__ import annotations
+```
+
+### 最白解释
+
+这是 Python 的一个兼容/前瞻写法。  
+在你现在这个项目里，可以先把它理解成：
+
+- 让后面的类型标注写起来更顺
+- 尤其是涉及复杂类型时更方便
+
+你现在不用深究底层原理，只要先知道：
+
+- 它和业务逻辑没关系
+- 主要是为了类型标注更稳定
+
+### Java 感觉
+
+Java 里没有特别对应的语法。  
+它更像一种“编译/语言特性开关”的感觉。
+
+---
+
+## 3. import 语法
 
 ### Python
 
@@ -41,7 +110,7 @@ import some.package.Field;
 
 ---
 
-## 2. class 继承
+## 4. class 继承
 
 ### Python
 
@@ -74,7 +143,7 @@ public class AskRequest extends BaseModel {
 
 ---
 
-## 3. 类型标注
+## 5. 类型标注
 
 ### Python
 
@@ -106,7 +175,7 @@ private Integer topK;
 
 ---
 
-## 4. Field(...)
+## 6. Field(...)
 
 ### Python
 
@@ -151,7 +220,73 @@ private Integer topK;
 
 ---
 
-## 5. 函数定义
+## 7. list[...] 泛型写法
+
+### Python
+
+```python
+sources: list[str]
+sources: list[SourceChunk]
+```
+
+### 最白解释
+
+这表示“列表里的元素类型”。
+
+例如：
+
+- `list[str]` = 字符串列表
+- `list[SourceChunk]` = `SourceChunk` 对象列表
+
+### Java 感觉
+
+很像：
+
+```java
+List<String> sources;
+List<SourceChunk> sources;
+```
+
+所以可以先记：
+
+- Python 的 `list[...]`
+- 很像 Java 的 `List<...>`
+
+---
+
+## 8. 字段默认值
+
+### Python
+
+```python
+langsmith_project: str | None = None
+```
+
+### 最白解释
+
+这表示：
+
+- 字段类型是 `str` 或 `None`
+- 默认值是 `None`
+
+也就是：
+
+- 这个字段可以不传
+- 如果不传，默认就是空
+
+### Java 感觉
+
+大致像：
+
+```java
+private String langsmithProject = null;
+```
+
+或者更接近“可空字段”的感觉。
+
+---
+
+## 9. 函数定义
 
 ### Python
 
@@ -181,7 +316,7 @@ public void readRoot() {
 
 ---
 
-## 6. 函数返回类型标注
+## 10. 函数返回类型标注
 
 ### Python
 
@@ -212,7 +347,7 @@ public Map<String, Object> readRoot() {
 
 ---
 
-## 7. 变量赋值
+## 11. 变量赋值
 
 ### Python
 
@@ -236,7 +371,7 @@ Settings settings = getCachedSettings();
 
 ---
 
-## 8. 返回字典
+## 12. 返回字典
 
 ### Python
 
@@ -270,7 +405,7 @@ return result;
 
 ---
 
-## 9. 属性访问
+## 13. 属性访问
 
 ### Python
 
@@ -299,7 +434,7 @@ settings.isLangsmithTracing()
 
 ---
 
-## 10. bool(...)
+## 14. bool(...)
 
 ### Python
 
@@ -324,7 +459,7 @@ settings.getOpenaiApiKey() != null
 
 ---
 
-## 11. 装饰器 @app.get / @app.post
+## 15. 装饰器 @app.get / @app.post
 
 ### Python
 
@@ -366,7 +501,7 @@ public HealthResponse health() {
 
 ---
 
-## 12. request: AskRequest
+## 16. request: AskRequest
 
 ### Python
 
@@ -403,7 +538,7 @@ public AskResponse askQuestion(@RequestBody AskRequest request) {
 
 ---
 
-## 13. 当前这个项目里最常用的对照
+## 17. 当前这个项目里最常用的对照
 
 - `app/main.py`
   像 Spring Boot 的 Controller
@@ -425,7 +560,7 @@ public AskResponse askQuestion(@RequestBody AskRequest request) {
 
 ---
 
-## 14. 以后怎么继续补
+## 18. 以后怎么继续补
 
 以后你只要问到某个 Python 写法，就继续按这个格式补：
 
