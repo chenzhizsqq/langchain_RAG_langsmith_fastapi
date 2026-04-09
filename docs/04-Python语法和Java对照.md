@@ -560,7 +560,169 @@ public AskResponse askQuestion(@RequestBody AskRequest request) {
 
 ---
 
-## 18. 以后怎么继续补
+## 18. def 和 async def
+
+### Python
+
+```python
+def ingest_text(...):
+    ...
+
+async def ingest_file(...):
+    ...
+```
+
+### 最白解释
+
+- `def`：普通同步函数
+- `async def`：异步函数，可以在函数里面写 `await`
+
+重点先记一句：
+
+- `async def` 是为了异步 IO，不是为了“开线程”
+
+### Java 感觉
+
+`def` 更像普通同步方法：
+
+```java
+public IngestResponse ingestText(...) {
+    ...
+}
+```
+
+`async def` 更像“异步/非阻塞风格的方法”，但不等于你手动开线程。
+
+---
+
+## 19. await
+
+### Python
+
+```python
+await file.close()
+```
+
+### 最白解释
+
+`await` 表示：
+
+- 这里要等待一个异步操作完成
+- 但等待方式是协程风格，不是普通阻塞写法
+
+只要函数里用了 `await`，这个函数通常就必须写成：
+
+```python
+async def ...
+```
+
+### Java 感觉
+
+没有完全一模一样的语法。
+
+感觉上有点像：
+
+- 你在写异步链路时，显式等待一个异步步骤完成
+- 但它不是 `Thread.sleep`
+- 也不是“我自己 new 一个线程”
+
+---
+
+## 20. 协程是什么
+
+### 最白解释
+
+在你当前项目语境里，可以先把协程理解成：
+
+- 一种专门处理异步 IO 的执行方式
+- 适合网络请求、文件流、连接关闭这类场景
+
+协程的重点不是“并行开很多线程”，而是：
+
+- 在等待 IO 时，不要把整个主流程卡死
+
+你现在先不需要学底层调度细节，只要先记：
+
+- `async def` / `await` 基本就是协程风格代码
+
+### Java 感觉
+
+更接近：
+
+- 响应式 / 非阻塞 / 异步执行风格
+
+不太像：
+
+- 传统一个请求一个线程的同步阻塞写法
+
+---
+
+## 21. FastAPI 里的线程池和协程区别
+
+### 最白解释
+
+在 FastAPI 里，可以先粗略这样理解：
+
+- 普通 `def` 路由函数
+  往往会放到线程池里执行
+
+- `async def` 路由函数
+  走协程 / 事件循环风格
+
+所以：
+
+- `def` 不代表“没有并发”
+- `async def` 也不代表“开新线程”
+
+你现在最重要的区分只有这个：
+
+- 线程池：更接近同步函数的执行方式
+- 协程：更接近异步 IO 的执行方式
+
+### Java 感觉
+
+可以先类比成：
+
+- `def`：比较像传统 Spring MVC 风格方法
+- `async def`：比较像异步/非阻塞风格接口
+
+但这只是帮助理解，不要完全一一对应到底层实现。
+
+---
+
+## 22. 为什么 ingest_file 用 async def
+
+### Python
+
+```python
+@app.post("/api/ingest/file", response_model=IngestResponse)
+async def ingest_file(file: UploadFile = File(...)) -> IngestResponse:
+    ...
+    await file.close()
+```
+
+### 最白解释
+
+最直接的原因是：
+
+- 这个函数里用了 `await file.close()`
+
+所以它必须写成：
+
+```python
+async def
+```
+
+再加上它处理的是文件上传，这类场景本来就更偏 IO。
+
+### 一句话记住
+
+- 这里不是“为了开线程”
+- 而是“因为这里用了异步 IO 风格”
+
+---
+
+## 23. 以后怎么继续补
 
 以后你只要问到某个 Python 写法，就继续按这个格式补：
 
