@@ -39,6 +39,21 @@ app/schemas.py
 
 `客户端请求 -> main.py -> rag_service.py -> main.py -> schemas.py -> JSON 响应`
 
+## Day 3 总结
+
+这套结构的核心不是“文件分开而已”，而是先约定每一层只做自己的事：
+
+- [app/main.py](./app/main.py)：只负责接口入口，不堆复杂业务
+- [app/rag_service.py](./app/rag_service.py)：只负责业务主流程
+- [app/schemas.py](./app/schemas.py)：只负责请求和响应结构
+
+这样做的目的很实际：
+
+- 自己过一周回来还能快速定位
+- 别的开发者一看就知道去哪里改
+- 不会把接口层写成巨型业务文件
+- 后面功能继续增加时，更容易维护
+
 这是一个重新从零搭好的入门项目，主题就是你要的这五块：
 
 - LangChain

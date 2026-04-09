@@ -32,6 +32,16 @@ Day 1 先看这个文件时，可以抓住四个最基础的 FastAPI 概念：
 - 这个文件很像 Controller
 - 每个 @app.get / @app.post 都像一个接口方法
 - response_model 很像“这个接口规定要返回什么 JSON 结构”
+
+Day 3 再补一个最重要的习惯：
+- 这个文件只负责“接”和“回”
+- 不负责承载复杂业务流程
+- 所以这里应该尽量保持短、小、清楚
+
+也就是说：
+- 接口路径写在这里
+- Request / Response schema 挂在这里
+- 真正的 RAG 业务逻辑往 service 下沉
 """
 
 from functools import lru_cache
@@ -88,6 +98,7 @@ def get_service() -> RAGService:
         return get_cached_service()
     except RuntimeError as exc:
         # 配置错误直接转成 HTTP 500，前端或 Swagger 可以马上看到原因。
+        # 这也体现分层：main.py 负责把业务异常转换成 HTTP 语义。
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -171,6 +182,9 @@ def ingest_text(request: TextIngestRequest) -> IngestResponse:
     # 所以这里对应的 schema 是：
     # - Request：TextIngestRequest
     # - Response：IngestResponse
+    # Day 3 要刻意注意：
+    # main.py 不直接处理“切块 / 向量化 / 入库”这些业务，
+    # 这里只负责把 request 里的字段交给 service。
     service = get_service()
     documents = build_text_document(request.title, request.text, request.source)
     result = service.ingest_documents(documents)
@@ -205,6 +219,9 @@ def ask_question(request: AskRequest) -> AskResponse:
     # 所以这里对应的 schema 是：
     # - Request：AskRequest
     # - Response：AskResponse
+    # Day 3 的重点就是这里：
+    # main.py 不去自己写检索、拼 prompt、调模型，
+    # 而是只把参数转交给 rag_service.py。
     service = get_service()
     # 问答接口本身不做业务逻辑，统一下沉到 RAGService，保持 API 层足够薄。
     result = service.answer_question(request.question, request.top_k)

@@ -81,6 +81,11 @@ Day 1 看这个文件时，重点理解三件事：
   表示“嵌套在某个 Response 里面的小结构”
   例如：
   - SourceChunk
+
+Day 3 再补一句工程化理解：
+- 这个文件只负责“数据长什么样”
+- 不负责“业务怎么做”
+- 这样别人一看到 schemas.py，就知道这里是结构定义，不是业务逻辑
 """
 
 from pydantic import BaseModel, Field

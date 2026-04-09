@@ -58,6 +58,16 @@ RAGService 是这个项目最核心的业务层。
 
 最简调用链是：
 客户端请求 -> main.py -> rag_service.py -> main.py -> schemas.py -> JSON 响应
+
+Day 3 再把规则说白一点：
+- main.py 负责收参数、调方法、回结果
+- rag_service.py 负责真正做业务
+- schemas.py 负责定义数据结构
+
+这样分开的好处是：
+- 自己隔一段时间回来还能快速定位
+- 别的开发者也能马上判断“该去哪个文件改”
+- 不容易把接口层写成巨型业务文件
 """
 
 from collections import defaultdict
@@ -81,6 +91,8 @@ class RAGService:
         self.settings = settings
         self.settings.validate_runtime()
 
+        # 这里开始进入真正的业务装配阶段。
+        # 这些对象都不应该堆到 main.py 里，否则接口层会越来越重。
         if settings.is_test_mode:
             # 测试模式目标是“先验证架构能不能跑”，所以完全走本地实现：
             # mock embedding + 内存向量库 + mock answer。
@@ -234,6 +246,7 @@ class RAGService:
     def answer_question(self, question: str, top_k: int | None = None) -> dict[str, Any]:
         # 这个方法对应 main.py 里的 /api/ask 接口。
         # main.py 先用 AskRequest 接住客户端 JSON，再把 question / top_k 传进来。
+        # 也就是说，Controller 层和 Service 层的分界点，就在这个方法调用这里。
         if self.collection_count() == 0:
             return {
                 "question": question,
