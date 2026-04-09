@@ -208,6 +208,8 @@ async def ingest_file(file: UploadFile = File(...)) -> IngestResponse:
     # Day 4 对应点：
     # - 这里演示的是“文件上传”
     # - UploadFile = File(...) 的感觉很像 Spring Boot 的 MultipartFile
+    # 这里写成 async def，不是为了“开线程”，而是因为这是文件 IO 场景，
+    # 并且下面会用到 await file.close() 这种异步写法。
     # 所以这里对应的 schema 是：
     # - Request：不是 schemas.py 的 BaseModel，而是 UploadFile
     # - Response：IngestResponse
