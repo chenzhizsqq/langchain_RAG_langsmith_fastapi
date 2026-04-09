@@ -49,6 +49,16 @@ Day 4 再补一个重点：
   - POST JSON
   - 文件上传
 - 但它不负责深入解析内容，而是把输入转交给 schema / loader / service
+
+Day 5 再补一个重点：
+- FastAPI 本身不是 AI 能力本身
+- 它更像统一入口和编排入口
+- 真正的价值在于：这个入口后面接了哪些外部能力
+- 例如：
+  - RAGService
+  - OpenAI 模型
+  - 向量库
+  - 文件处理
 """
 
 from functools import lru_cache
@@ -237,6 +247,8 @@ def ask_question(request: AskRequest) -> AskResponse:
     # Day 3 的重点就是这里：
     # main.py 不去自己写检索、拼 prompt、调模型，
     # 而是只把参数转交给 rag_service.py。
+    # Day 5 的重点也在这里：
+    # FastAPI 只作为入口，真正调用外部 AI / 检索能力的是后面的 service。
     service = get_service()
     # 问答接口本身不做业务逻辑，统一下沉到 RAGService，保持 API 层足够薄。
     result = service.answer_question(request.question, request.top_k)

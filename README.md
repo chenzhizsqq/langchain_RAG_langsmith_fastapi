@@ -74,6 +74,31 @@ Day 4 的核心可以先用一句很白的话记住：
 - 数据传入传出会更稳定
 - 后面扩展输入类型时更容易维护
 
+## Day 5 总结
+
+Day 5 的核心可以先这样记：
+
+FastAPI 本身只是入口，真正的价值在它后面接了什么能力。
+
+放到这个项目里，可以先这样看：
+
+- [app/main.py](./app/main.py)：接口入口层，只负责接请求和回结果
+- [app/rag_service.py](./app/rag_service.py)：外部能力编排层，真正把模型、检索、业务流程串起来
+- [app/config.py](./app/config.py)：外部能力配置入口，例如模型名、API key、向量库目录
+- [app/loaders.py](./app/loaders.py)：负责把真实输入整理成业务层能处理的统一格式
+
+对这个项目来说，Day 5 里最重要的“后面能力”主要是：
+
+- OpenAIEmbeddings
+- ChatOpenAI
+- Chroma
+- LangSmith traceable
+- test 模式下的本地 mock runtime
+
+所以可以先把最短理解记成：
+
+`iOS / Web -> FastAPI -> RAGService -> 模型 / 向量库 / 文件处理 -> FastAPI -> 客户端`
+
 这是一个重新从零搭好的入门项目，主题就是你要的这五块：
 
 - LangChain

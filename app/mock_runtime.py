@@ -1,5 +1,26 @@
 from __future__ import annotations
 
+"""
+这个文件可以先把它理解成：
+"测试模式下的替身能力文件"。
+
+它不是正式 production 模式下的 AI 核心能力层，
+而是为了这些目的存在：
+
+- 没有真实 OpenAI key 时，先把系统跑通
+- 不想立刻消耗真实模型费用时，先验证接口和流程
+- 教学和演示时，更容易理解系统结构
+
+所以可以先这样记：
+
+- test 模式：这个文件有作用
+- production 模式：这个文件基本不参与主流程
+
+也就是说：
+- 它不是正式 AI 能力本身
+- 它是测试 / 教学 / 本地联调用的替身实现
+"""
+
 import math
 import re
 from hashlib import sha1
@@ -14,6 +35,9 @@ TOKEN_PATTERN = re.compile(r"[\u4e00-\u9fff]|[a-zA-Z0-9_]+")
 class LocalHashEmbeddings(Embeddings):
     # 这里不是为了做“高质量 embedding”，而是为了在无外部 API 的情况下
     # 仍然能把“文本 -> 向量 -> 相似度检索”这条链路完整跑通。
+    # 它在 Day 5 里的定位是：
+    # - 测试模式下的“本地 embedding 替身”
+    # - 让你先理解系统结构，而不是被真实模型依赖卡住
     def __init__(self, dimensions: int = 64) -> None:
         self.dimensions = dimensions
 
@@ -44,6 +68,9 @@ class LocalHashEmbeddings(Embeddings):
 def build_mock_answer(question: str, matches: list[tuple[Document, float]]) -> str:
     # 测试模式下不调用 LLM，这里直接把检索到的结果整理成可读回答，
     # 让你确认“检索和上下文拼装”已经正常工作。
+    # 它在 Day 5 里的定位是：
+    # - 测试模式下的“本地回答替身”
+    # - 用来代替 ChatOpenAI，验证后端完整链路是否通了
     sources = []
     highlights = []
 

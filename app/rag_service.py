@@ -68,21 +68,50 @@ Day 3 再把规则说白一点：
 - 自己隔一段时间回来还能快速定位
 - 别的开发者也能马上判断“该去哪个文件改”
 - 不容易把接口层写成巨型业务文件
+
+Day 5 再补一个重点：
+- 这个文件是“外部能力编排层”
+- FastAPI 接到请求后，真正调用外部能力的大多是在这里
+- 对当前项目来说，后面接的能力主要有：
+  - OpenAIEmbeddings
+  - ChatOpenAI
+  - Chroma
+  - LangSmith traceable
+  - 本地 mock runtime
+
+也就是说：
+- main.py 是入口
+- rag_service.py 是真正把“模型、检索、业务流程”串起来的地方
 """
 
 from collections import defaultdict
 from hashlib import sha1
 from typing import Any
 
+# Chroma 是当前项目在 production 模式下使用的向量库实现。
+# 它负责：
+# - 存储向量化后的文档片段
+# - 根据问题做相似度检索
+# 在 Day 5 里，它属于真正的“后端外部能力”之一。
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.vectorstores import InMemoryVectorStore
+# ChatOpenAI 是聊天模型调用层。
+# 它负责：
+# - 把“问题 + context”发送给真实 LLM
+# - 返回最终生成答案
+# 在 production 模式下，它就是问答生成能力的核心。
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+# traceable 来自 LangSmith。
+# 它负责给关键业务方法加链路追踪，
+# 让你后面能看到 ingest 和 ask 的调用过程。
 from langsmith import traceable
 
 from app.config import Settings
+# LocalHashEmbeddings / build_mock_answer 属于测试模式下的本地 mock runtime。
+# 它们让项目在没有真实 OpenAI key 时，也能把“检索和回答链路”跑通。
 from app.mock_runtime import LocalHashEmbeddings, build_mock_answer
 
 
@@ -96,13 +125,27 @@ class RAGService:
         if settings.is_test_mode:
             # 测试模式目标是“先验证架构能不能跑”，所以完全走本地实现：
             # mock embedding + 内存向量库 + mock answer。
+            # LocalHashEmbeddings 的作用：
+            # - 模拟 embedding 能力
+            # - 不追求质量，只追求能完整跑通“文本 -> 向量 -> 检索”链路
             self.embeddings = LocalHashEmbeddings(dimensions=settings.mock_embedding_dimensions)
             self.llm = None
             self.vector_store = InMemoryVectorStore(self.embeddings)
         else:
             # 生产模式才接真实 OpenAI 和 Chroma。
+            # Day 5 对应点：
+            # 这里就是“后端调用外部 AI / 检索能力”的核心区域。
+            # OpenAIEmbeddings 的作用：
+            # - 把文本片段转换成向量
+            # - 让后面可以做语义相似度检索
             self.embeddings = OpenAIEmbeddings(model=settings.embedding_model)
+            # ChatOpenAI 的作用：
+            # - 把整理好的 context 和问题发给聊天模型
+            # - 生成最终答案
             self.llm = ChatOpenAI(model=settings.chat_model, temperature=0)
+            # Chroma 的作用：
+            # - 保存文档向量
+            # - 按语义相似度检索最相关片段
             self.vector_store = Chroma(
                 collection_name=settings.chroma_collection_name,
                 embedding_function=self.embeddings,
@@ -171,6 +214,11 @@ class RAGService:
         # ingest 是 RAG 的“索引阶段”入口：切块 -> 向量化 -> 写入向量库。
         # 这个方法不会直接接 HTTP 请求，它是被 main.py 的接口函数调用的。
         # main.py 先把外部输入整理成 Document，再交给这里处理。
+        # Day 5 对应点：
+        # 这里已经开始真正调用“后面的能力”了，例如文本切块、向量化、向量库写入。
+        # @traceable 的作用：
+        # - 让 LangSmith 能记录这个方法的执行链路
+        # - 后面调试时可以看到 ingest 阶段到底发生了什么
         chunks = self._chunk_documents(documents)
         if not chunks:
             return {
@@ -247,6 +295,9 @@ class RAGService:
         # 这个方法对应 main.py 里的 /api/ask 接口。
         # main.py 先用 AskRequest 接住客户端 JSON，再把 question / top_k 传进来。
         # 也就是说，Controller 层和 Service 层的分界点，就在这个方法调用这里。
+        # Day 5 对应点：
+        # 这里会真正触发后端的检索和模型调用，
+        # 所以 AI 产品的核心价值通常不在 FastAPI 路由本身，而在这里的编排。
         if self.collection_count() == 0:
             return {
                 "question": question,
@@ -267,6 +318,9 @@ class RAGService:
 
         context = self._format_context(matches)
         if self.settings.is_test_mode:
+            # build_mock_answer 的作用：
+            # - 在测试模式下代替真实 LLM 输出
+            # - 重点不是答案质量，而是验证“检索 + 上下文组装 + API 返回”是否跑通
             answer = build_mock_answer(question, matches)
         else:
             # 生产模式下，真正把“问题 + 检索上下文”交给 LLM。
