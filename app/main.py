@@ -42,6 +42,13 @@ Day 3 再补一个最重要的习惯：
 - 接口路径写在这里
 - Request / Response schema 挂在这里
 - 真正的 RAG 业务逻辑往 service 下沉
+
+Day 4 再补一个重点：
+- 这个文件负责“接住不同输入形式”
+- 例如：
+  - POST JSON
+  - 文件上传
+- 但它不负责深入解析内容，而是把输入转交给 schema / loader / service
 """
 
 from functools import lru_cache
@@ -179,6 +186,9 @@ def ingest_sample_documents() -> IngestResponse:
 def ingest_text(request: TextIngestRequest) -> IngestResponse:
     # request: TextIngestRequest 表示这个 POST 接口会接收一个 JSON body。
     # 也就是说，客户端要传入 title / text / source 这样的 JSON 字段。
+    # Day 4 对应点：
+    # - 这里演示的是“POST JSON”
+    # - 外部输入先被解析成 TextIngestRequest
     # 所以这里对应的 schema 是：
     # - Request：TextIngestRequest
     # - Response：IngestResponse
@@ -195,6 +205,9 @@ def ingest_text(request: TextIngestRequest) -> IngestResponse:
 async def ingest_file(file: UploadFile = File(...)) -> IngestResponse:
     # 这个 POST 不是接 JSON，而是接文件上传。
     # 对 iOS 来说，这类接口通常对应 multipart/form-data 请求。
+    # Day 4 对应点：
+    # - 这里演示的是“文件上传”
+    # - UploadFile = File(...) 的感觉很像 Spring Boot 的 MultipartFile
     # 所以这里对应的 schema 是：
     # - Request：不是 schemas.py 的 BaseModel，而是 UploadFile
     # - Response：IngestResponse

@@ -86,6 +86,11 @@ Day 3 再补一句工程化理解：
 - 这个文件只负责“数据长什么样”
 - 不负责“业务怎么做”
 - 这样别人一看到 schemas.py，就知道这里是结构定义，不是业务逻辑
+
+Day 4 再补一个重点：
+- 这个文件主要负责“JSON 输入结构定义”
+- 当接口接收 POST JSON 时，通常先在这里定义 Request Model
+- 文件上传不一定走 BaseModel，因为文件上传常用的是 UploadFile / File(...)
 """
 
 from pydantic import BaseModel, Field
@@ -118,6 +123,9 @@ class IngestResponse(BaseModel):
 class TextIngestRequest(BaseModel):
     # Request
     # 这是一个 Request Model：客户端传 JSON 进来时，要符合这个结构。
+    # Day 4 对应点：
+    # - 它就是 /api/ingest/text 的 JSON body 结构
+    # - 客户端要发文本给后端时，就按这个结构组织 JSON
     # Field(...) 里的规则就是参数校验规则。
     # 这里可以顺便记住：
     # - class ... (BaseModel) 是“定义一个 Pydantic 数据模型”
