@@ -39,6 +39,65 @@ app/schemas.py
 
 `客户端请求 -> main.py -> rag_service.py -> main.py -> schemas.py -> JSON 响应`
 
+## Day 7：iOS 视角的完整 AI 架构图
+
+到了 Day 7，就不要再只盯 `FastAPI` 本身，而要把整条链路一起看：
+
+```text
+iOS App
+用户输入问题 / 上传内容
+        |
+        v
+FastAPI
+app/main.py
+后端门面层，负责接请求、调业务、回 JSON
+        |
+        v
+RAG Service
+app/rag_service.py
+业务逻辑层，负责检索、组装上下文、生成答案
+        |
+        +----------------------+
+        |                      |
+        v                      v
+Vector DB                  LLM API
+Chroma / 内存向量库         ChatOpenAI / mock answer
+负责语义检索                负责生成自然语言答案
+        |
+        v
+FastAPI 返回 JSON
+AskResponse / HealthResponse / IngestResponse
+        |
+        v
+iOS App 展示结果
+答案 / 来源 / 状态
+```
+
+可以先把这五层记成：
+
+- `iOS`：客户端层
+- `FastAPI`：后端门面层
+- `RAG Service`：业务逻辑层
+- `Vector DB`：检索层
+- `LLM API`：生成层
+
+如果以后你在 iOS App 里接 AI，这条链路通常会是这样：
+
+1. 用户在 iPhone 上输入问题
+2. iOS 调 FastAPI 的 `/api/ask`
+3. [app/main.py](./app/main.py) 接住请求
+4. [app/rag_service.py](./app/rag_service.py) 先做检索
+5. 向量库返回最相关的资料片段
+6. `rag_service.py` 再把问题和资料交给模型
+7. 模型生成答案
+8. `main.py` 用 [app/schemas.py](./app/schemas.py) 组织成 JSON
+9. FastAPI 把结果回给 iOS
+10. iOS 把答案和来源展示给用户
+
+所以 Day 7 最重要的不是某个单独文件，而是脑子里能稳定记住这句：
+
+`iOS -> FastAPI -> RAG Service -> Vector DB / LLM API -> FastAPI -> iOS`
+
 ## Day 3 总结
 
 这套结构的核心不是“文件分开而已”，而是先约定每一层只做自己的事：
@@ -354,6 +413,7 @@ langchain_RAG_langsmith_fastapi/
 │   ├── 02-RAG工作流.md
 │   └── 03-LangSmith与调试.md
 ├── storage/
+│   └── 运行时目录，保存 Chroma 数据和上传文件，不是手动维护的源码目录
 ├── .env.example
 ├── pyproject.toml
 └── README.md
