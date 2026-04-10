@@ -731,3 +731,185 @@ async def
 3. Java / Spring Boot 感觉
 
 这样你会更快把 Python 项目结构读顺。
+
+---
+
+## 24. 后端调试常见状态码
+
+这一节不是 Python 语法本身，而是 Day 6 调试时最常遇到的 HTTP 状态和现象。
+
+你可以把它理解成：
+
+- Python / FastAPI 项目里常见的接口报错提示
+- 很像你在 Spring Boot 或 iOS 联调时会看到的 HTTP 结果
+
+### `404 Not Found`
+
+#### 最白解释
+
+表示：
+
+- 请求已经打到服务了
+- 但是这个路径不存在
+- 或者你写错了 URL
+
+在这个项目里，通常先看：
+
+- `http://127.0.0.1:8000/docs`
+- [app/main.py](/Users/chenzhizs/Documents/GitHub/langchain_RAG_langsmith_fastapi/app/main.py)
+
+#### Java / Spring Boot 感觉
+
+很像：
+
+- `@GetMapping` / `@PostMapping` 没有这个路径
+- 前端请求地址写错了
+
+---
+
+### `405 Method Not Allowed`
+
+#### 最白解释
+
+表示：
+
+- 路径是对的
+- 但是 HTTP 方法错了
+
+比如：
+
+- 接口要求 `POST`
+- 你却发了 `GET`
+
+#### Java / Spring Boot 感觉
+
+很像：
+
+- Spring Boot 里路径存在
+- 但你把 `@PostMapping` 的接口当成 `GET` 去调
+
+---
+
+### `422 Unprocessable Entity`
+
+#### 最白解释
+
+表示：
+
+- 路由命中了
+- 请求也进来了
+- 但是 JSON 结构或字段校验没通过
+
+在 FastAPI 里，这通常和 `Pydantic` 的 `BaseModel` / `Field(...)` 有关。
+
+在这个项目里，通常先看：
+
+- [app/schemas.py](/Users/chenzhizs/Documents/GitHub/langchain_RAG_langsmith_fastapi/app/schemas.py)
+
+常见原因：
+
+- 必填字段没传
+- 字段类型不对
+- 字符串太短
+- 数值超出范围
+
+#### Java / Spring Boot 感觉
+
+很像：
+
+- `@RequestBody` 已经进来了
+- 但是 DTO 校验没过
+- 类似 `@NotBlank`、`@Min`、`@Max` 这种校验失败
+
+---
+
+### `400 Bad Request`
+
+#### 最白解释
+
+表示：
+
+- 请求本身不合法
+- 或者后端主动认为这个输入不能接受
+
+在这个项目里，文件上传或 loader 转换失败时，也可能主动抛这类错误。
+
+通常先看：
+
+- [app/main.py](/Users/chenzhizs/Documents/GitHub/langchain_RAG_langsmith_fastapi/app/main.py)
+- [app/loaders.py](/Users/chenzhizs/Documents/GitHub/langchain_RAG_langsmith_fastapi/app/loaders.py)
+
+#### Java / Spring Boot 感觉
+
+很像：
+
+- 请求参数格式不对
+- 或者 Controller / Service 主动返回了一个非法请求错误
+
+---
+
+### `500 Internal Server Error`
+
+#### 最白解释
+
+表示：
+
+- 请求已经进来了
+- 参数也可能已经通过了
+- 但后端处理过程中出了异常
+
+在这个项目里，通常先看：
+
+- 控制台报错
+- [app/rag_service.py](/Users/chenzhizs/Documents/GitHub/langchain_RAG_langsmith_fastapi/app/rag_service.py)
+- [app/config.py](/Users/chenzhizs/Documents/GitHub/langchain_RAG_langsmith_fastapi/app/config.py)
+- [app/loaders.py](/Users/chenzhizs/Documents/GitHub/langchain_RAG_langsmith_fastapi/app/loaders.py)
+
+#### Java / Spring Boot 感觉
+
+很像：
+
+- Controller 已经进来了
+- 但 Service / DAO / 外部服务调用时报了未处理异常
+
+---
+
+### 连不上服务
+
+#### 最白解释
+
+这不是一个 HTTP 状态码，而是更早的一层问题。
+
+表示：
+
+- 服务可能没启动
+- host / port 不对
+- 请求根本没打到 FastAPI
+
+这时候先看：
+
+- 启动终端输出
+- `http://127.0.0.1:8000/docs`
+- [app/main.py](/Users/chenzhizs/Documents/GitHub/langchain_RAG_langsmith_fastapi/app/main.py)
+- `.env`
+
+#### Java / Spring Boot 感觉
+
+很像：
+
+- Spring Boot 根本没启动
+- 端口配错了
+- 本地服务没监听成功
+
+---
+
+### 一句话记住
+
+可以先这样粗略判断：
+
+- `404`：像是“路没找到”
+- `405`：像是“路对了，但走法错了”
+- `422`：像是“路对了，但你带的参数格式不对”
+- `400`：像是“请求本身不合法”
+- `500`：像是“后端里面炸了”
+- 连不上：像是“服务根本没起来，或者你没连到它”
