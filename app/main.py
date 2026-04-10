@@ -59,6 +59,14 @@ Day 5 再补一个重点：
   - OpenAI 模型
   - 向量库
   - 文件处理
+
+Day 6 再补一个重点：
+- 这个文件也是“调试入口层”
+- 因为当你排查问题时，最先确认的通常就是：
+  - 服务有没有启动
+  - 路由有没有注册
+  - 请求有没有打到这里
+- 所以 Day 6 的目标不是先修 bug，而是先定位 bug 在哪一层
 """
 
 from functools import lru_cache
@@ -257,6 +265,13 @@ def ask_question(request: AskRequest) -> AskResponse:
 
 if __name__ == "__main__":
     settings = get_cached_settings()
+    # Day 6 对应点：
+    # 这里是最直接的服务启动入口。
+    # 启动后如果控制台出现：
+    # - Started server process
+    # - Application startup complete
+    # - Uvicorn running on http://127.0.0.1:8000
+    # 一般就说明服务层已经正常起来了。
     uvicorn.run(
         "app.main:app",
         host=settings.app_host,

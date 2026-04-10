@@ -99,6 +99,204 @@ FastAPI 本身只是入口，真正的价值在它后面接了什么能力。
 
 `iOS / Web -> FastAPI -> RAGService -> 模型 / 向量库 / 文件处理 -> FastAPI -> 客户端`
 
+## Day 6 总结
+
+Day 6 的核心可以先这样记：
+
+不是先修所有 bug，而是先判断 bug 在哪一层。
+
+你现在这个项目，最实用的排查顺序是：
+
+1. 先看控制台日志  
+   先确认服务有没有正常启动。
+
+2. 再看 `/docs` 和 `/openapi.json`  
+   先确认接口有没有正常注册。
+
+3. 再调最简单的接口，例如 `/health`  
+   先确认请求能不能打进去。
+
+4. 再判断问题属于哪一层  
+   - 请求层：URL、端口、路径不对
+   - 参数层：JSON 结构不对、字段缺失、校验失败
+   - 业务层：service、loader、config、外部能力调用有问题
+
+对这个项目来说，可以先粗略这样分：
+
+- [app/main.py](./app/main.py)：服务和接口入口层，先看服务是否启动、路由是否注册
+- [app/schemas.py](./app/schemas.py)：参数和返回结构层，先看请求 JSON 是否符合定义
+- [app/loaders.py](./app/loaders.py)：输入转换层，先看文件或文本有没有被正确转成 `Document`
+- [app/rag_service.py](./app/rag_service.py)：业务层，先看检索、模型调用、mock/production 分支是否正常
+
+所以 Day 6 的目标不是“掌握全部错误”，而是建立一个固定的判断顺序。
+
+### Day 6 四步调试法
+
+#### 第一步：先看控制台日志
+
+这一层先确认的不是业务，而是服务本身有没有真正启动成功。
+
+- 如果你是用 `.venv/bin/python -m app.main` 启动，就先盯终端输出
+- 正常情况下应该能看到：
+  - `Started server process`
+  - `Application startup complete`
+  - `Uvicorn running on http://127.0.0.1:8000`
+
+这一步主要对应：
+
+- [app/main.py](./app/main.py)
+- [app/config.py](./app/config.py)
+- `.env`
+
+如果这里就报错，通常优先怀疑：
+
+- 运行命令不对
+- 虚拟环境没启用
+- 配置项有问题
+- `main.py` 或导入模块本身出错
+
+也就是说，这一步是在判断：
+“服务有没有活着，而不是接口逻辑对不对。”
+
+#### 第二步：再看 `/docs` 和 `/openapi.json`
+
+这一步主要是确认接口层有没有正常注册。
+
+- 如果 `/docs` 能打开，说明 FastAPI 基本已经正常工作
+- 如果 `/openapi.json` 能返回，说明路由和 schema 基本都已注册成功
+
+这一步最对应的文件是：
+
+- [app/main.py](./app/main.py)
+- [app/schemas.py](./app/schemas.py)
+
+原因是：
+
+- 路由装饰器都写在 `main.py`
+- 请求和响应结构会影响 OpenAPI 文档生成
+
+如果这一步不通，通常优先怀疑：
+
+- 路由没注册成功
+- 服务其实没真正跑起来
+- host / port 访问错了
+- `schemas.py` 或 `main.py` 有加载问题
+
+这一步本质是在确认：
+“这个后端到底有没有把接口暴露出来。”
+
+#### 第三步：先调最简单的接口，例如 `/health`
+
+这一步不是在测复杂功能，而是在测最基础的请求链路。
+
+- `/health` 成功，通常说明：
+  - 请求已经能打进 FastAPI
+  - 路由命中了
+  - 返回 JSON 正常
+  - 基本配置能被读取
+
+这一步主要对应：
+
+- [app/main.py](./app/main.py)
+- [app/schemas.py](./app/schemas.py)
+- [app/config.py](./app/config.py)
+
+为什么先调 `/health`：
+
+- 它不依赖文件上传
+- 不依赖文档入库
+- 不依赖 RAG 检索
+- 不依赖复杂业务分支
+
+所以如果 `/health` 都不通，就不要先去怀疑 `rag_service.py`，因为问题多半还没到业务层。
+
+#### 第四步：再判断问题属于哪一层
+
+到了这一步，才开始真正分层定位。
+
+##### 请求层
+
+常见现象：
+
+- 连不上服务
+- `404 Not Found`
+- `405 Method Not Allowed`
+- 控制台没有这次请求日志
+
+优先看：
+
+- [app/main.py](./app/main.py)
+- `/docs`
+- 请求 URL、端口、路径、HTTP 方法
+
+这层的典型问题是：
+
+- 路径写错
+- 端口写错
+- 用错 `GET` / `POST`
+- 根本没打到后端
+
+##### 参数层
+
+常见现象：
+
+- `422 Unprocessable Entity`
+- `400 Bad Request`
+- Swagger 里提示字段校验失败
+
+优先看：
+
+- [app/schemas.py](./app/schemas.py)
+
+这层的典型问题是：
+
+- JSON 结构不对
+- 必填字段缺失
+- 字段类型不对
+- 长度或数值范围没满足 `Field(...)` 的规则
+
+这一步的本质是判断：
+“请求已经进来了，但数据格式有没有符合接口约定。”
+
+##### 业务层
+
+常见现象：
+
+- 请求进来了
+- 参数也合法
+- 但返回 `500`
+- 或者返回成功但结果明显不对
+
+优先看：
+
+- [app/rag_service.py](./app/rag_service.py)
+- [app/loaders.py](./app/loaders.py)
+- [app/config.py](./app/config.py)
+- [app/mock_runtime.py](./app/mock_runtime.py)
+
+这层的典型问题是：
+
+- 文本或文件没被正确转成 `Document`
+- mock / production 模式切错
+- 向量库里没数据
+- settings 配错
+- 外部能力调用异常
+
+这一步本质是在判断：
+“不是接口格式问题，而是后面的处理流程出问题了。”
+
+### Day 6 常见错误速查
+
+| 现象 / 状态 | 通常说明什么 | 优先先看哪里 |
+| --- | --- | --- |
+| 连不上服务 | 服务可能没启动，或者 host / port 不对 | 控制台启动日志、`app/main.py`、`.env` 里的 `APP_HOST` / `APP_PORT` |
+| `404 Not Found` | 路径写错，或者接口没注册到这个 URL | `/docs`、`app/main.py` |
+| `405 Method Not Allowed` | 路径是对的，但 HTTP 方法错了，例如把 `POST` 写成了 `GET` | `/docs`、`app/main.py` |
+| `422 Unprocessable Entity` | 请求 JSON 结构不对，字段缺失、类型不对、校验没过 | `app/schemas.py` |
+| `400 Bad Request` | 请求格式本身不合法，或者业务上主动拒绝了输入 | `app/main.py`、`app/loaders.py` |
+| `500 Internal Server Error` | 请求进来了，但后端业务层或配置层出错了 | 控制台报错、`app/config.py`、`app/loaders.py`、`app/rag_service.py` |
+| 返回成功但结果不对 | 路由和参数可能都没问题，问题多半在业务逻辑或检索结果 | `app/rag_service.py`、`/api/stats`、LangSmith trace |
+
 这是一个重新从零搭好的入门项目，主题就是你要的这五块：
 
 - LangChain
